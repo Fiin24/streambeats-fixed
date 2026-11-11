@@ -445,3 +445,5 @@ Urutan sumber per lagu (`src/store/downloads.ts` → `fetchAudio`):
 Catatan teknis: klien YouTube IOS/ANDROID tanpa PO token hanya memberi ±1 MB pertama lalu 403 — kini terdeteksi dan langsung
 lanjut ke sumber berikutnya. Blokir "Sign in to confirm you're not a bot" terikat ke IP/jaringan: bila semua sumber gagal,
 coba ganti jaringan (Wi-Fi ↔ data seluler) lalu **Coba lagi**.
+   
+# Build trigger fix
