@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Shortcut saat ikon aplikasi ditekan lama -->
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+    <shortcut android:shortcutId="play_liked" android:enabled="true" android:icon="@drawable/ic_shortcut_heart"
+        android:shortcutShortLabel="@string/sc_liked_short" android:shortcutLongLabel="@string/sc_liked_long">
+        <intent android:action="android.intent.action.VIEW" android:targetPackage="com.musickuzyy.streambeats"
+            android:targetClass="com.musickuzyy.streambeats.MainActivity" android:data="com.musickuzyy.streambeats://open/play-liked" />
+    </shortcut>
+    <shortcut android:shortcutId="resume" android:enabled="true" android:icon="@drawable/ic_shortcut_play"
+        android:shortcutShortLabel="@string/sc_resume_short" android:shortcutLongLabel="@string/sc_resume_long">
+        <intent android:action="android.intent.action.VIEW" android:targetPackage="com.musickuzyy.streambeats"
+            android:targetClass="com.musickuzyy.streambeats.MainActivity" android:data="com.musickuzyy.streambeats://open/resume" />
+    </shortcut>
+    <shortcut android:shortcutId="together" android:enabled="true" android:icon="@drawable/ic_shortcut_group"
+        android:shortcutShortLabel="@string/sc_together_short" android:shortcutLongLabel="@string/sc_together_long">
+        <intent android:action="android.intent.action.VIEW" android:targetPackage="com.musickuzyy.streambeats"
+            android:targetClass="com.musickuzyy.streambeats.MainActivity" android:data="com.musickuzyy.streambeats://open/together" />
+    </shortcut>
+    <shortcut android:shortcutId="voice" android:enabled="true" android:icon="@drawable/ic_shortcut_mic"
+        android:shortcutShortLabel="@string/sc_voice_short" android:shortcutLongLabel="@string/sc_voice_long">
+        <intent android:action="android.intent.action.VIEW" android:targetPackage="com.musickuzyy.streambeats"
+            android:targetClass="com.musickuzyy.streambeats.MainActivity" android:data="com.musickuzyy.streambeats://open/search" />
+    </shortcut>
+</shortcuts>

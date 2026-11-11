@@ -1,0 +1,144 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html, body, #root { height: 100%; }
+body {
+  margin: 0;
+  background: #000;
+  color: #fff;
+  -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
+  overscroll-behavior: none;
+}
+
+/* Scrollbar ramping seperti stylesheet asli */
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(255,255,255,.2); border-radius: 9999px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,.35); }
+* { scrollbar-width: thin; scrollbar-color: rgba(255,255,255,.2) transparent; }
+
+@layer utilities {
+  .no-scrollbar { scrollbar-width: none; }
+  .no-scrollbar::-webkit-scrollbar { display: none; }
+  .text-shadow { text-shadow: 0 1px 3px rgba(0,0,0,.85); }
+  .pb-safe { padding-bottom: env(safe-area-inset-bottom); }
+  .line-clamp-1 { display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden; }
+  .line-clamp-2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+}
+
+/* Slider durasi & volume */
+input[type='range'].range {
+  -webkit-appearance: none; appearance: none; width: 100%; height: 16px; background: transparent; cursor: pointer;
+}
+input[type='range'].range::-webkit-slider-runnable-track {
+  height: 4px; border-radius: 9999px;
+  background: linear-gradient(to right, var(--fill, #fff) 0%, var(--fill, #fff) var(--p, 0%), rgba(255,255,255,.22) var(--p, 0%), rgba(255,255,255,.22) 100%);
+}
+input[type='range'].range::-moz-range-track { height: 4px; border-radius: 9999px; background: rgba(255,255,255,.22); }
+input[type='range'].range::-moz-range-progress { height: 4px; border-radius: 9999px; background: var(--fill, #fff); }
+input[type='range'].range::-webkit-slider-thumb {
+  -webkit-appearance: none; height: 12px; width: 12px; margin-top: -4px; border-radius: 9999px; background: #fff; border: 0;
+  box-shadow: 0 1px 4px rgba(0,0,0,.5);
+}
+input[type='range'].range::-moz-range-thumb { height: 12px; width: 12px; border-radius: 9999px; background: #fff; border: 0; }
+input[type='range'].range:hover { --fill: #FA243C; }
+
+/* Host YouTube player tersembunyi (harus tetap di DOM agar audio berjalan) */
+#yt-host { position: fixed; left: 0; bottom: 0; width: 1px; height: 1px; opacity: 0; pointer-events: none; overflow: hidden; z-index: -1; }
+
+/* =====================================================================
+   LIQUID GLASS — kaca cair untuk player bar, mini player, navigasi & menu
+   Struktur: .lg (wadah)  > .lg-clip > .lg-fx | .lg-tint | .lg-shine
+   --tint diisi warna dominan cover album (beranimasi halus lewat @property)
+   ===================================================================== */
+@property --tint { syntax: '<color>'; inherits: true; initial-value: rgb(70 70 82); }
+
+.lg {
+  isolation: isolate;
+  transition: --tint .9s ease, transform .25s cubic-bezier(.2,.8,.2,1), box-shadow .3s ease;
+  box-shadow: 0 18px 50px -12px rgba(0,0,0,.65), 0 4px 14px rgba(0,0,0,.35);
+}
+.lg-clip { position: absolute; inset: 0; border-radius: inherit; overflow: hidden; z-index: -1; pointer-events: none; }
+.lg-clip > span { position: absolute; inset: 0; border-radius: inherit; }
+
+/* 1. Lapisan pembias: blur + saturasi latar di belakang kaca */
+.lg-fx {
+  -webkit-backdrop-filter: blur(26px) saturate(185%) brightness(1.08);
+  backdrop-filter: blur(26px) saturate(185%) brightness(1.08);
+}
+/* Chromium: distorsi SVG membuat tepi kaca "meleleh" seperti cairan */
+html.lg-svg .lg-fx { filter: url(#lg-distort); inset: -6px; }
+
+/* 2. Warna kaca mengikuti cover lagu */
+.lg-tint {
+  background:
+    linear-gradient(135deg,
+      color-mix(in srgb, var(--tint) 46%, transparent) 0%,
+      color-mix(in srgb, var(--tint) 18%, transparent) 48%,
+      rgb(14 14 18 / .38) 100%);
+}
+
+/* 3. Kilau: tepi terang + pantulan spekular */
+.lg-shine {
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.38),
+    inset 0 -1px 0 rgba(255,255,255,.07),
+    inset 1px 0 0 rgba(255,255,255,.10),
+    inset -1px 0 0 rgba(255,255,255,.10),
+    inset 0 0 28px rgba(255,255,255,.05);
+}
+.lg-shine::before {
+  content: ''; position: absolute; inset: 0; border-radius: inherit;
+  background:
+    radial-gradient(120% 90% at 8% -30%, rgba(255,255,255,.26), transparent 52%),
+    radial-gradient(80% 60% at 100% 130%, rgba(255,255,255,.10), transparent 60%);
+  /* jangan pakai mix-blend-mode di sini: memutus backdrop-filter di Chromium */
+}
+.lg-shine::after {
+  content: ''; position: absolute; inset: 0; border-radius: inherit; padding: 1px;
+  background: linear-gradient(155deg, rgba(255,255,255,.6), rgba(255,255,255,.06) 32%, rgba(255,255,255,0) 55%, rgba(255,255,255,.28));
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0);
+}
+
+/* Varian lebih gelap (menu pop-up) agar teks tetap terbaca */
+.lg-dark .lg-tint {
+  background: linear-gradient(135deg, color-mix(in srgb, var(--tint) 30%, rgb(22 22 28 / .72)), rgb(16 16 20 / .78));
+}
+
+/* Kaca tipis untuk header/menu: bayangan lebih ringan */
+.lg-soft { box-shadow: 0 8px 24px -10px rgba(0,0,0,.55), 0 1px 3px rgba(0,0,0,.25); }
+.lg-soft:hover { box-shadow: 0 10px 28px -10px rgba(0,0,0,.6), 0 1px 3px rgba(0,0,0,.3); }
+
+/* Tombol "lensa" kecil di dalam kaca */
+.lg-btn { background: rgba(255,255,255,.08); box-shadow: inset 0 1px 0 rgba(255,255,255,.18), 0 1px 2px rgba(0,0,0,.25); }
+.lg-btn:hover { background: rgba(255,255,255,.14); }
+
+/* Indikator tab yang "mengalir" di navigasi bawah */
+.lg-pill {
+  background: linear-gradient(180deg, rgba(255,255,255,.20), rgba(255,255,255,.07));
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.35), inset 0 -1px 0 rgba(255,255,255,.06), 0 4px 14px rgba(0,0,0,.25);
+  transition: left .45s cubic-bezier(.3,1.4,.5,1), width .45s cubic-bezier(.3,1.4,.5,1), opacity .2s;
+}
+
+/* Mode tanpa kaca (Pengaturan → Liquid glass mati / pengguna minta transparansi dikurangi) */
+html.no-glass .lg-fx { -webkit-backdrop-filter: none; backdrop-filter: none; filter: none; }
+html.no-glass .lg-tint { background: linear-gradient(135deg, color-mix(in srgb, var(--tint) 35%, #161618), #121214); }
+@media (prefers-reduced-transparency: reduce) {
+  .lg-fx { -webkit-backdrop-filter: none; backdrop-filter: none; filter: none; }
+  .lg-tint { background: linear-gradient(135deg, color-mix(in srgb, var(--tint) 35%, #161618), #121214); }
+}
+@media (prefers-reduced-motion: reduce) { .lg, .lg-pill { transition: none; } }
+
+/* Mini player: tekan & geser */
+.press:active { transform: scale(.985); }
+
+/* Slider equalizer (diputar vertikal) */
+input[type='range'].eq-slider { -webkit-appearance: none; appearance: none; height: 28px; background: transparent; cursor: pointer; }
+input[type='range'].eq-slider::-webkit-slider-runnable-track { height: 4px; border-radius: 9999px; background: rgba(255,255,255,.18); }
+input[type='range'].eq-slider::-moz-range-track { height: 4px; border-radius: 9999px; background: rgba(255,255,255,.18); }
+input[type='range'].eq-slider::-webkit-slider-thumb { -webkit-appearance: none; width: 18px; height: 18px; margin-top: -7px; border-radius: 6px; background: #fff; border: 0; box-shadow: 0 1px 4px rgba(0,0,0,.5); }
+input[type='range'].eq-slider::-moz-range-thumb { width: 18px; height: 18px; border-radius: 6px; background: #fff; border: 0; }

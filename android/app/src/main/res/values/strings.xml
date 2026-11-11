@@ -1,0 +1,18 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Stream Beats</string>
+    <string name="title_activity_main">Stream Beats</string>
+    <string name="package_name">com.musickuzyy.streambeats</string>
+    <string name="custom_url_scheme">com.musickuzyy.streambeats</string>
+    <string name="widget_description">Kontrol lagu yang sedang diputar</string>
+    <string name="widget_idle_title">Stream Beats</string>
+    <string name="widget_idle_subtitle">Ketuk untuk mulai memutar</string>
+    <string name="sc_liked_short">Lagu disukai</string>
+    <string name="sc_liked_long">Putar lagu disukai (acak)</string>
+    <string name="sc_resume_short">Lanjutkan</string>
+    <string name="sc_resume_long">Lanjutkan lagu terakhir</string>
+    <string name="sc_together_short">Bersama</string>
+    <string name="sc_together_long">Dengar bersama</string>
+    <string name="sc_voice_short">Cari suara</string>
+    <string name="sc_voice_long">Cari lagu dengan suara</string>
+</resources>

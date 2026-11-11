@@ -1,0 +1,72 @@
+[build]
+  command = "npm run build"
+  publish = "dist"
+
+[build.environment]
+  NODE_VERSION = "22"
+
+[functions]
+  directory = "netlify/functions"
+  node_bundler = "esbuild"
+
+# PWA: service worker & manifest selalu dicek ulang agar pembaruan cepat sampai
+[[headers]]
+  for = "/sw.js"
+  [headers.values]
+    Cache-Control = "public, max-age=0, must-revalidate"
+
+[[headers]]
+  for = "/manifest.webmanifest"
+  [headers.values]
+    Cache-Control = "public, max-age=0, must-revalidate"
+    Content-Type = "application/manifest+json"
+
+[[headers]]
+  for = "/assets/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+# API → Netlify Function (query string ikut diteruskan)
+[[redirects]]
+  from = "/api/yt"
+  to = "/.netlify/functions/yt"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/api/dl"
+  to = "/.netlify/functions/dl"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/api/spotify"
+  to = "/.netlify/functions/spotify"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/api/auth"
+  to = "/.netlify/functions/auth"
+  status = 200
+  force = true
+
+# Dengar bersama (ruangan real time)
+[[redirects]]
+  from = "/api/together"
+  to = "/.netlify/functions/together"
+  status = 200
+  force = true
+
+# Login Google: redirect URI yang didaftarkan di Google Cloud Console
+[[redirects]]
+  from = "/api/google-callback"
+  to = "/.netlify/functions/google-callback"
+  status = 200
+  force = true
+
+# Semua rute halaman (SPA) → index.html
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
