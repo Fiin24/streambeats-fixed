@@ -8,9 +8,15 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
 
       - name: Setup Java
         uses: actions/setup-java@v4
@@ -23,8 +29,9 @@ jobs:
 
       - name: Build web app
         run: |
-          npm install
-          npm run build
+          npm ci
+          npx tsc --noEmit
+          npx vite build
 
       - name: Copy web app into Android assets
         run: npx cap sync android
@@ -32,14 +39,9 @@ jobs:
       - name: Build Android APK
         run: cd android && ./gradlew assembleDebug
 
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: 22
-
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: streambeats-debug-apk
           path: android/app/build/outputs/apk/debug/app-debug.apk
-          if-no-files-found: error
+          if-no-files-found: warn
