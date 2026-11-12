@@ -9,6 +9,8 @@
 import { savingData } from './dataSaver';
 import { audioDb } from './idb';
 import { Capacitor, CapacitorHttp } from '@capacitor/core';
+import { downloadViaMirrors } from './altSources';
+import { fetchAudioServer } from '../store/downloads';
 
 const PLAYER = 'https://www.youtube.com/youtubei/v1/player?prettyPrint=false';
 /** potongan lebih kecil dari server agar data base64 lewat bridge Capacitor tetap ringan */
@@ -145,102 +147,16 @@ function b64ToBytes(b64: string): Uint8Array {
   return out;
 }
 
-/** Unduh seluruh file audio langsung dari HP. */
+/** Unduh seluruh file audio langsung dari HP — pakai mirror agar tidak stuck. */
 export async function downloadOnDevice(videoId: string, signal: AbortSignal, onProgress: (p: number) => void): Promise<Blob> {
-  const skip: string[] = [];
-  let r = await resolve(videoId, skip);
-  const saved = await audioDb.getPartial(videoId).catch(() => undefined);
-  const partial = saved?.source === 'device' ? saved : undefined;
-  const parts: Uint8Array[] = [];
-  let start = 0;
-  if (partial?.chunks?.length) {
-    for (const chunk of partial.chunks) {
-      const bytes = new Uint8Array(await chunk.arrayBuffer());
-      if (bytes.byteLength) { parts.push(bytes); start += bytes.byteLength; }
-    }
+  try {
+    // Pakai mirror dulu (lebih stabil di HP) — skip CapacitorHttp ke YouTube langsung
+    const r = await downloadViaMirrors(videoId, signal, onProgress);
+    if (r) return new Blob([r.blob], { type: r.mime });
+  } catch (e: any) {
+    console.warn('[unduh] mirror gagal, fallback ke server', e);
   }
-  let total = partial?.total || r.size || Infinity;
-  if (start > 0) onProgress(Number.isFinite(total) && total > 0 ? Math.min(0.99, start / total) : 0.01);
-  let fails = 0;
-  let consecutiveEmptyChunks = 0;
-  const MAX_EMPTY_CHUNKS = 3;
-  
-  while (start < total) {
-    if (signal.aborted) throw new DOMException('Dibatalkan', 'AbortError');
-    const end = Math.min(start + CHUNK - 1, Number.isFinite(total) ? total - 1 : start + CHUNK - 1);
-    let res;
-    try {
-      res = await CapacitorHttp.get({
-        url: r.url,
-        headers: { Range: `bytes=${start}-${end}`, 'User-Agent': r.ua, 'Accept': '*/*' },
-        responseType: 'arraybuffer',
-        connectTimeout: 15_000,
-        readTimeout: 45_000, // Increased timeout for slow connections
-      });
-    } catch (e: any) {
-      if (++fails > 5) throw new Error(e?.message || 'Jaringan bermasalah');
-      // Exponential backoff with jitter
-      await new Promise((ok) => setTimeout(ok, Math.min(800 * fails + Math.random() * 500, 10000)));
-      continue;
-    }
-    if (signal.aborted) throw new DOMException('Dibatalkan', 'AbortError');
-    
-    if (res.status !== 200 && res.status !== 206) {
-      // URL kedaluwarsa / ditolak → ambil ulang alamat dengan klien lain
-      if (res.status === 403 && start >= 1024 * 1024 && !r.client.includes('VR') && !r.client.includes('EMBED'))
-        throw new Error('YouTube memotong unduhan setelah 1 MB (klien butuh token) — mencoba sumber lain');
-      if (res.status === 416) { // Range not satisfiable - we're done
-        break;
-      }
-      if (++fails > 5) throw new Error(`Gagal mengunduh audio (HTTP ${res.status})`);
-      skip.push(r.client);
-      if (skip.length >= CLIENTS.length) {
-        // Semua klien YouTube gagal → lempar error yang jelas untuk fallback ke mirror/alternatif
-        throw new Error('Semua klien YouTube gagal — coba "Link Lain"');
-      }
-      r = await resolve(videoId, skip);
-      continue;
-    }
-    
-    const data = res.data;
-    const bytes = typeof data === 'string' ? b64ToBytes(data) : data instanceof ArrayBuffer ? new Uint8Array(data) : new Uint8Array(0);
-    
-    if (!bytes.byteLength) {
-      consecutiveEmptyChunks++;
-      if (consecutiveEmptyChunks >= MAX_EMPTY_CHUNKS) {
-        // Might be end of stream
-        break;
-      }
-      // Small delay before retry
-      await new Promise((ok) => setTimeout(ok, 500));
-      continue;
-    }
-    
-    consecutiveEmptyChunks = 0;
-    
-    const cr = Object.entries(res.headers || {}).find(([k]) => k.toLowerCase() === 'content-range')?.[1];
-    const t = Number(String(cr || '').split('/')[1]);
-    if (t) total = t;
-    parts.push(bytes);
-    start += bytes.byteLength;
-    if (!Number.isFinite(total) && bytes.byteLength < CHUNK) total = start; // ukuran tidak diketahui → potongan terakhir
-    fails = 0;
-    await audioDb.putPartial(videoId, {
-      videoId,
-      chunks: parts.map((chunk) => new Blob([chunk.buffer as ArrayBuffer], { type: r.mime })),
-      size: start,
-      total: Number.isFinite(total) ? total : undefined,
-      source: 'device',
-      mime: r.mime,
-      updatedAt: Date.now(),
-    }).catch(() => undefined);
-    onProgress(Number.isFinite(total) ? Math.min(1, start / total) : Math.min(0.99, start / (start + CHUNK)));
-    // pastikan progress tidak pernah mundur / >1
-  }
-  
-  if (parts.length === 0) {
-    throw new Error('Tidak ada data audio yang diterima');
-  }
-  
-  return new Blob(parts as BlobPart[], { type: r.mime });
+  // Fallback ke server /api/dl
+  return await fetchAudioServer(videoId, signal, onProgress);
+}
 }

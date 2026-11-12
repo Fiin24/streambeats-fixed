@@ -22,6 +22,8 @@ public class MainActivity extends BridgeActivity {
         registerPlugin(ExternalAuthPlugin.class);
         // Plugin lokal untuk pencarian suara (dialog pengenalan suara Android)
         registerPlugin(VoiceSearchPlugin.class);
+        // Plugin untuk handle tombol back Android dengan benar
+        registerPlugin(BackHandlerPlugin.class);
         super.onCreate(savedInstanceState);
     }
 
@@ -44,26 +46,24 @@ public class MainActivity extends BridgeActivity {
 
     /**
      * Tombol back HP: kembalikan ke halaman/menu sebelumnya di dalam aplikasi.
-     *
-     * Strategi sederhana & aman:
-     *  - Selama WebView aktif, biarkan React layer yang handle back (history pop →
-     *    React Router pop → overlay menu tutup). Android hanya auto-finish Activity
-     *    setelah React benar-benar di home ("/").
-     *  - Saat di home, Activity tidak finish seketika — pengguna masih bisa
-     *    kembali lewat recent apps (tidak "hilang" di tengah unduhan / playback).
+     * Delegasikan ke BackHandlerPlugin yang akan komunikasi dengan React layer.
      */
     @SuppressLint("UselessOverridingMethod")
     @Override
     public boolean onKeyDown(int keyCode, KeyEvent event) {
         if (keyCode == KeyEvent.KEYCODE_BACK && event.getAction() == KeyEvent.ACTION_DOWN) {
+            // Delegasikan ke BackHandlerPlugin
+            PluginHandle handle = getBridge() != null ? getBridge().getPlugin("BackHandler") : null;
+            if (handle != null && handle.getInstance() instanceof BackHandlerPlugin) {
+                BackHandlerPlugin plugin = (BackHandlerPlugin) handle.getInstance();
+                if (plugin.onBackPressed()) {
+                    return true; // React sudah handle back
+                }
+            }
+            // Fallback: coba history.back() jika plugin tidak handle
             if (getBridge() != null && getBridge().getWebView() != null) {
-                // Tanya React layer dulu (sinkron via flag window) — tapi karena
-                // evaluateJavascript async, kita panggil history.back() hanya bila
-                // WebView masih ada halaman sebelumnya.
-                // Simple: coba back. Bila sudah di home, history.back() tidak
-                // mengubah URL (masih "/"), jadi tidak ada crash, hanya no-op.
                 getBridge().getWebView().evaluateJavascript("window.history.back();", null);
-                return true; // swallow: jangan langsung finish Activity
+                return true;
             }
         }
         return super.onKeyDown(keyCode, event);

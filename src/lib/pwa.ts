@@ -1,7 +1,30 @@
-/**
- * PWA: pendaftaran service worker, pembaruan versi, status offline & tombol instal.
- */
-import { create } from 'zustand';
+import { useEffect } from 'react';
+import { Capacitor, registerPlugin } from '@capacitor/core';
+
+interface BackHandlerPlugin {
+  registerHandler(): Promise<{ registered: boolean }>;
+  unregisterHandler(): Promise<{ unregistered: boolean }>;
+}
+const BackHandler = registerPlugin<BackHandlerPlugin>('BackHandler');
+
+declare global {
+  interface Window {
+    __backHandler?: () => boolean;
+  }
+}
+
+/** React hook untuk mendaftarkan handler tombol back */
+export function useBackHandler(handler: () => boolean) {
+  useEffect(() => {
+    window.__backHandler = handler;
+    BackHandler.registerHandler().catch(() => {});
+    return () => {
+      window.__backHandler = undefined;
+      BackHandler.unregisterHandler().catch(() => {});
+    };
+  }, [handler]);
+}
+
 import { registerSW } from 'virtual:pwa-register';
 import { toast } from './toast';
 
