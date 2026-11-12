@@ -149,9 +149,18 @@ function b64ToBytes(b64: string): Uint8Array {
 export async function downloadOnDevice(videoId: string, signal: AbortSignal, onProgress: (p: number) => void): Promise<Blob> {
   const skip: string[] = [];
   let r = await resolve(videoId, skip);
+  const saved = await audioDb.getPartial(videoId).catch(() => undefined);
+  const partial = saved?.source === 'device' ? saved : undefined;
   const parts: Uint8Array[] = [];
   let start = 0;
-  let total = r.size || Infinity;
+  if (partial?.chunks?.length) {
+    for (const chunk of partial.chunks) {
+      const bytes = new Uint8Array(await chunk.arrayBuffer());
+      if (bytes.byteLength) { parts.push(bytes); start += bytes.byteLength; }
+    }
+  }
+  let total = partial?.total || r.size || Infinity;
+  if (start > 0) onProgress(Number.isFinite(total) && total > 0 ? Math.min(0.99, start / total) : 0.01);
   let fails = 0;
   let consecutiveEmptyChunks = 0;
   const MAX_EMPTY_CHUNKS = 3;
@@ -216,6 +225,15 @@ export async function downloadOnDevice(videoId: string, signal: AbortSignal, onP
     start += bytes.byteLength;
     if (!Number.isFinite(total) && bytes.byteLength < CHUNK) total = start; // ukuran tidak diketahui → potongan terakhir
     fails = 0;
+    await audioDb.putPartial(videoId, {
+      videoId,
+      chunks: parts.map((chunk) => new Blob([chunk.buffer as ArrayBuffer], { type: r.mime })),
+      size: start,
+      total: Number.isFinite(total) ? total : undefined,
+      source: 'device',
+      mime: r.mime,
+      updatedAt: Date.now(),
+    }).catch(() => undefined);
     onProgress(Number.isFinite(total) ? Math.min(1, start / total) : Math.min(0.99, start / (start + CHUNK)));
     // pastikan progress tidak pernah mundur / >1
   }

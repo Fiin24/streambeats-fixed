@@ -4,6 +4,7 @@ import { VitePWA } from 'vite-plugin-pwa';
 import { handle } from './api/_lib/router.js';
 import { handleDl } from './api/_lib/audio.js';
 import { getSpotifyCollection } from './api/_lib/spotify.js';
+import { resolve } from 'node:path';
 import { handleAuth, clientIp } from './api/_lib/auth.js';
 import { handleTogether, CORS_HEADERS } from './api/_lib/together.js';
 
@@ -172,7 +173,14 @@ const pwa = () =>
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '');
+  const disablePwa = env.VITE_DISABLE_PWA === '1' || process.env.VITE_DISABLE_PWA === '1';
+  const aliases: Record<string, string> = {};
+  if (disablePwa) aliases['virtual:pwa-register'] = resolve(process.cwd(), 'src/lib/pwa-register-stub.ts');
   return {
-    plugins: [react(), ytApi(env), pwa()],
+    resolve: { alias: aliases },
+    // PWA generation can fail on Android ARM due to Workbox/Terser worker limits.
+    // Netlify keeps the normal PWA path; local phone builds can opt out explicitly.
+    build: { minify: false },
+    plugins: [react(), ytApi(env), ...(disablePwa ? [] : [pwa()])],
   };
 });

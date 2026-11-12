@@ -213,8 +213,10 @@ async function fetchAudio(t: Track, signal: AbortSignal, onProgress: Progress, f
 const permanent = (msg: string) => /memblokir|diblokir|not a bot|sign in|tidak valid|private|unavailable|tidak tersedia|mirror|HTTP 403|token/i.test(msg);
 
 async function fetchAudioServer(videoId: string, signal: AbortSignal, onProgress: (p: number) => void): Promise<Blob> {
-  const parts: ArrayBuffer[] = [];
-  let start = 0, total = Infinity, mime = 'audio/mp4';
+  const saved = await audioDb.getPartial(videoId).catch(() => undefined);
+  const partial = saved?.source === 'server' ? saved : undefined;
+  const parts: Blob[] = partial?.chunks?.slice() || [];
+  let start = partial?.size || 0, total = partial?.total || Infinity, mime = partial?.mime || 'audio/mp4';
   let consecutiveFailures = 0;
   const MAX_CONSECUTIVE_FAILURES = 3;
   
@@ -264,9 +266,10 @@ async function fetchAudioServer(videoId: string, signal: AbortSignal, onProgress
     mime = (ct || mime).split(';')[0];
     const buf = await res.arrayBuffer();
     if (!buf.byteLength) break;
-    parts.push(buf);
+    parts.push(new Blob([buf], { type: mime }));
     start += buf.byteLength;
     if (!total) total = start; // server tidak tahu ukuran → anggap selesai
+    await audioDb.putPartial(videoId, { videoId, chunks: parts, size: start, total: Number.isFinite(total) ? total : undefined, source: 'server', mime, updatedAt: Date.now() }).catch(() => undefined);
     onProgress(Math.min(1, start / total));
   }
   return new Blob(parts, { type: mime });
@@ -298,6 +301,7 @@ export const useDownloads = create<DlState>()(
           });
           if (blob.size < 10_000) throw new Error('File audio tidak valid (terlalu kecil)');
           await audioDb.put(id, blob);
+          await audioDb.delPartial(id).catch(() => undefined);
           cacheCovers(t);
           set((s) => {
             const { [id]: _, ...active } = s.active;

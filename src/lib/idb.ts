@@ -7,7 +7,12 @@ const DB_VERSION = 2;  // v2: partial download chunks untuk resume
 export interface PartialDownload {
   videoId: string;
   chunks: Blob[];
+  /** Bytes already persisted */
   size: number;
+  /** Full stream size when known */
+  total?: number;
+  /** Prevent combining chunks obtained from different download paths */
+  source?: 'device' | 'server';
   mime: string;
   updatedAt: number;
 }
@@ -31,7 +36,7 @@ async function tx<T>(mode: IDBTransactionMode, fn: (s: IDBObjectStore) => IDBReq
   const db = await open();
   return new Promise<T>((resolve, reject) => {
     const t = db.transaction(store, mode);
-    const r = fn(t.objectStore(STORE));
+    const r = fn(t.objectStore(store));
     t.oncomplete = () => resolve(r.result);
     t.onerror = () => reject(t.error || r.error);
     t.onabort = () => reject(t.error || new Error('Transaksi dibatalkan'));
