@@ -18,15 +18,28 @@ jobs:
           distribution: 'temurin'
           java-version: '21'
 
-      - name: Grant execute permission for gradlew
-        run: chmod +x gradlew
+      - name: Grant execute permission for Gradle wrapper
+        run: chmod +x android/gradlew
 
-      - name: Build with Gradle
-        run: ./gradlew assembleDebug
+      - name: Build web app
+        run: |
+          npm install
+          npm run build
+
+      - name: Copy web app into Android assets
+        run: npx cap sync android
+
+      - name: Build Android APK
+        run: cd android && ./gradlew assembleDebug
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: app-debug
-          path: app/build/outputs/apk/debug/app-debug.apk
+          name: streambeats-debug-apk
+          path: android/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
