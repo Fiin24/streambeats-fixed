@@ -212,7 +212,7 @@ async function fetchAudio(t: Track, signal: AbortSignal, onProgress: Progress, f
 /** Pesan error server yang tidak akan berubah bila diulang (mis. IP server diblokir) */
 const permanent = (msg: string) => /memblokir|diblokir|not a bot|sign in|tidak valid|private|unavailable|tidak tersedia|mirror|HTTP 403|token/i.test(msg);
 
-async function fetchAudioServer(videoId: string, signal: AbortSignal, onProgress: (p: number) => void): Promise<Blob> {
+export async function fetchAudioServer(videoId: string, signal: AbortSignal, onProgress: (p: number) => void): Promise<Blob> {
   const saved = await audioDb.getPartial(videoId).catch(() => undefined);
   const partial = saved?.source === 'server' ? saved : undefined;
   const parts: Blob[] = partial?.chunks?.slice() || [];

@@ -152,11 +152,10 @@ export async function downloadOnDevice(videoId: string, signal: AbortSignal, onP
   try {
     // Pakai mirror dulu (lebih stabil di HP) — skip CapacitorHttp ke YouTube langsung
     const r = await downloadViaMirrors(videoId, signal, onProgress);
-    if (r) return new Blob([r.blob], { type: r.mime });
+    if (r) return new Blob([r.blob], { type: r.blob.type || 'audio/mp4' });
   } catch (e: any) {
     console.warn('[unduh] mirror gagal, fallback ke server', e);
   }
   // Fallback ke server /api/dl
   return await fetchAudioServer(videoId, signal, onProgress);
-}
 }

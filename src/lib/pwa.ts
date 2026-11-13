@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+import { create } from 'zustand';
 import { Capacitor, registerPlugin } from '@capacitor/core';
 
 interface BackHandlerPlugin {
