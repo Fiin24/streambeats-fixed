@@ -225,7 +225,9 @@ export async function fetchAudioServer(videoId: string, signal: AbortSignal, onP
     let lastErr = '';
     for (let attempt = 0; attempt < 5; attempt++) {
       try {
-        res = await fetch(`/api/dl?id=${encodeURIComponent(videoId)}&start=${start}&end=${start + CHUNK - 1}`, { signal, cache: 'no-store' });
+import { BASE_URL } from '../lib/api';
+// ...
+        res = await fetch(`${BASE_URL}/api/dl?id=${encodeURIComponent(videoId)}&start=${start}&end=${start + CHUNK - 1}`, { signal, cache: 'no-store' });
         if (res.ok) break;
         const j = await res.json().catch(() => ({}));
         lastErr = j.error || `HTTP ${res.status}`;

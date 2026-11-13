@@ -3,13 +3,16 @@ import { useSettings } from '../store/settings';
 
 const cache = new Map<string, Promise<unknown>>();
 
+import { isNativeApp } from './native';
+export const BASE_URL = isNativeApp() ? (import.meta.env.VITE_CAP_SERVER_URL || 'https://streambeast.netlify.app') : '';
+
 export function api<T>(params: Record<string, string | undefined>, useCache = true): Promise<T> {
   const { hl, gl } = useSettings.getState();
   const sp = new URLSearchParams();
   for (const [k, v] of Object.entries({ ...params, hl, gl })) if (v) sp.set(k, v);
   const key = sp.toString();
   if (useCache && cache.has(key)) return cache.get(key) as Promise<T>;
-  const p = fetch(`/api/yt?${key}`).then(async (r) => {
+  const p = fetch(`${BASE_URL}/api/yt?${key}`).then(async (r) => {
     const j = await r.json().catch(() => ({}));
     if (!r.ok) throw new Error(j.error || `Gagal memuat (${r.status})`);
     return j as T;
